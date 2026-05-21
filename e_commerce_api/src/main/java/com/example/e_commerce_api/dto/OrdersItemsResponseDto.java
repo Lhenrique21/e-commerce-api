@@ -5,7 +5,8 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ProductsUpdateDto extends ProductsCreateDto{
+public class OrdersItemsResponseDto {
     private Long id;
     private Float quantity;
+    private Float price;
 }

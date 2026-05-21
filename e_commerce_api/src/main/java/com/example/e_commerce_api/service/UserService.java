@@ -6,7 +6,9 @@ import com.example.e_commerce_api.entity.Cart;
 import com.example.e_commerce_api.entity.User;
 import com.example.e_commerce_api.exception.UserException;
 import com.example.e_commerce_api.mapper.UserMapper;
+import com.example.e_commerce_api.repository.CartRepository;
 import com.example.e_commerce_api.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -19,28 +21,31 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private CartRepository cartRepository;
+
     public void createUser(UserCreateDto userCreateDto) {
         try {
             User userToSave = UserMapper.mapUserToEntityCreate(userCreateDto);
             Cart cart = new Cart();
             cart.setUser(userToSave);
+            userToSave.setCart(cart);
             userRepository.save(userToSave);
         } catch (Exception e) {
             throw new UserException("Erro ao salvar usuário " + e.getMessage());
         }
     }
 
-    public User findById(Long id){
+    public User findById(Long id) {
         try {
-             return  userRepository.findById(id).get();
-        }
-        catch (Exception e){
+            return userRepository.findById(id).get();
+        } catch (Exception e) {
             throw new UserException("Erro ao buscar usuário pelo ID " + e.getMessage());
         }
     }
 
-    public User findByEmail(String email){
-        try{
+    public User findByEmail(String email) {
+        try {
             User user = userRepository.findByEmail(email).get();
             return user;
         } catch (Exception e) {
@@ -48,10 +53,10 @@ public class UserService {
         }
     }
 
-    public List<User> findAll(){
-        try{
+    public List<User> findAll() {
+        try {
             return userRepository.findAll();
-        } catch (Exception e){
+        } catch (Exception e) {
             throw new UserException("Erro ao buscar usuários" + e.getMessage());
         }
     }
@@ -72,8 +77,8 @@ public class UserService {
         throw new UserException("Erro ao atualizar estudante ");
     }
 
-    public void deleteUser(Long id){
-        try{
+    public void deleteUser(Long id) {
+        try {
             userRepository.deleteById(id);
         } catch (Exception e) {
             throw new UserException("Erro ao deletar estudante " + e.getMessage());

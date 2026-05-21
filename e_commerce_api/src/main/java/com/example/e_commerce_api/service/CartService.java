@@ -5,11 +5,13 @@ import com.example.e_commerce_api.entity.CartItems;
 import com.example.e_commerce_api.entity.Products;
 import com.example.e_commerce_api.entity.User;
 import com.example.e_commerce_api.exception.CartException;
+import com.example.e_commerce_api.repository.CartItemsRepository;
 import com.example.e_commerce_api.repository.CartRepository;
 import com.example.e_commerce_api.repository.ProductsRepository;
 import com.example.e_commerce_api.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 
 
@@ -25,8 +27,11 @@ public class CartService {
     @Autowired
     ProductsRepository productsRepository;
 
-    public void addProductToCart(Long idUser, Long idProduct){
-        try{
+    @Autowired
+    CartItemsRepository cartItemsRepository;
+
+    public void addProductToCart(Long idUser, Long idProduct, Float quantity) {
+        try {
 
             User user = userRepository.findById(idUser).orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
             Cart cart = user.getCart();
@@ -35,41 +40,60 @@ public class CartService {
 
             List<CartItems> cartItems = cart.getCartItems();
 
-            boolean alReadyExistsInCart = cartItems.stream().anyMatch(item -> item.getProducts().equals(products));
-            if(!alReadyExistsInCart){
+            boolean alreadyExistsInCart = cartItems.stream().anyMatch(item -> java.util.Objects.equals(item.getProducts(), products));
+            if (!alreadyExistsInCart) {
                 CartItems newItem = new CartItems();
                 newItem.setProducts(products);
                 newItem.setCart(cart);
-
+                newItem.setQuantity(quantity);
                 cartItems.add(newItem);
 
+                cartItemsRepository.save(newItem);
                 cartRepository.save(cart);
             }
         } catch (Exception e) {
-            throw  new CartException("Erro ao adicionar produto ao carrinho " + e.getMessage());
+
+            throw new CartException("Erro ao adicionar produto ao carrinho " + e.getMessage());
         }
     }
 
-    public void removeProductsFromCart(Long idUser, Long idProduct){
-        try{
+    public void removeProductsFromCart(Long idUser, Long idProduct, Float quantity) {
+        try {
             User user = userRepository.findById(idUser).orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
             Cart cart = user.getCart();
             List<CartItems> cartItems = cart.getCartItems();
 
-            boolean remove = cartItems.removeIf(item -> item.getProducts().getId().equals(idProduct));
+            CartItems itemEncontrado = cartItems.stream()
+                    .filter(item -> item.getProducts() != null && item.getProducts().getId().equals(idProduct))
+                    .findFirst()
+                    .orElse(null);
 
-            if (remove){
-                cartRepository.save(cart);
+            if (itemEncontrado != null) {
+                float novaQuantidade = itemEncontrado.getQuantity() - quantity;
+
+                if (novaQuantidade <= 0) {
+                    cartItems.remove(itemEncontrado);
+                    cartItemsRepository.delete(itemEncontrado);
+                } else {
+                    itemEncontrado.setQuantity(novaQuantidade);
+                    cartItemsRepository.save(itemEncontrado);
+                }
             }
-        } catch (Exception e){
+        } catch (Exception e) {
             throw new CartException("Erro ao remover produto ao carrinho " + e.getMessage());
         }
     }
 
-    public void cleanCart(){
-        try{
-            cartRepository.deleteAll();
+    public void cleanCart(Long idUser) {
+        try {
+            User user = userRepository.findById(idUser).orElseThrow();
+            Cart cart = user.getCart();
+
+            if (cart != null && cart.getCartItems() != null) {
+                cart.getCartItems().clear();
+                cartRepository.save(cart);
+            }
         } catch (Exception e) {
             throw new CartException("Erro ao limpar carrinho " + e.getMessage());
         }
